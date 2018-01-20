@@ -8,7 +8,8 @@ let correctCount = 0;
 let correctAnswer = '';
 let timer = 0;
 let timerHandle;
-const timePerQuestion = 12;
+const timePerQuestion = 30;
+const questionCount = 2;
 
 let init = () => {
     const startInstructions = 'Click anywhere to start the game';
@@ -17,11 +18,12 @@ let init = () => {
     $(document).on('click', function() {
         startGame();
         removeInstructions();
-        $(document).off();
+        $(document).off('click');
     });
 };
 
 const startGame = () => {
+    questionIndex = 0;
     displayLoadAnimation();
     getTriviaQuestions();
 };
@@ -35,7 +37,6 @@ const startNextRound = () => {
 };
 
 const nextQuestion = () => {
-    if (questionIndex < questionSet.length) {
         // get trivia question
         let questionObj = questionSet[questionIndex];
         let question = questionObj['question'];
@@ -48,12 +49,6 @@ const nextQuestion = () => {
 
         displayQuestion(question, correctAnswer, answerSet);
         questionIndex++;
-    } else {
-        // no questions left; display results
-        questionIndex = 0;
-        showResults();
-        setNextRoundListener();
-    }
 };
 
 const displayQuestion = (question, correctAnswer, answerSet) => {
@@ -74,11 +69,11 @@ const displayQuestion = (question, correctAnswer, answerSet) => {
         answerElem.addClass('panel__game-feature__answer--grow');
         
         if (answer === correctAnswer) {
-            answerElem.attr('data_correct', "");
+            answerElem.attr('data_correct', "true");
         }
 
         // add click listeners
-        let clickHandle = answerElem.on('click', function() {
+        let clickHandle = answerElem.on('click', function(event) {
             // increment correct guess count if answered correctly
             if ($(this).attr('data_correct')) {
                 correctCount++
@@ -87,11 +82,13 @@ const displayQuestion = (question, correctAnswer, answerSet) => {
             } else {
                 removeQuestion();
                 displayIncorrectAnswerMsg();
-                resetTimer();
             }
 
             // stop/reset timer
             resetTimer();
+
+            // stop event propagation; so the next event isn't immedietly triggered
+            event.stopPropagation();
             setNextRoundListener();
         });
 
@@ -119,13 +116,13 @@ const clearQuestions = () => {
 const showResults = () => {
     let questionCount = questionSet.length;
     let score = correctCount / questionCount;
-
+    $('.panel__game-feature').text(`These are the results: ${score}`);
 };
 
 const clearHandlers = () => {
     let answers = $('.panel__game-feature__answer');
     for (let i = 0; i < answers.length; i ++) {
-        answers[i].off();
+        answers[i].off('click');
     }
 };
 
@@ -176,16 +173,15 @@ const getTriviaCallback = data => {
 };
 
 const getTriviaQuestions = () => {
-    const QUESTION_COUNT = 20;
     const DIFFICULTY = 'easy';
-    const URL = `https://opentdb.com/api.php?amount=${QUESTION_COUNT}&category=11&difficulty=${DIFFICULTY}&type=multiple`;
+    const URL = `https://opentdb.com/api.php?amount=${questionCount}&category=11&difficulty=${DIFFICULTY}&type=multiple`;
     $.ajax({
         type: 'GET',
         url: URL,
         cache: false
     }).done((data) => {
         getTriviaCallback(data);
-        //removeLoadAnimation();
+        removeLoadAnimation();
     });
 };
 
@@ -195,17 +191,25 @@ const setNextRoundListener = () => {
         // remove anything in the game-feature section
         $('.panel__game-feature').html('');
         
-        if (questionIndex < questionSet.length) {
+        if (hasMoreQuestions()) {
             startNextRound();
+            removeNextRoundListener();
         } else {
-            startGame();
+            if (questionIndex > questionSet.length) {
+                startGame();
+                removeNextRoundListener();
+            } else {
+                // no questions left; display results
+                showResults();
+                setNextRoundListener();
+                questionIndex++;
+            }
         }
-        removeNextRoundListener();
     });
 };
 
 const removeNextRoundListener = () => {
-    $(document).off();
+    $(document).off('click');
 };
 
 const monitorRound = () => {
@@ -225,6 +229,10 @@ const monitorRound = () => {
         //  set next round listener to set next question on click
         setNextRoundListener();
     }
+};
+
+const hasMoreQuestions = () => {
+    return questionIndex < questionSet.length
 };
 
 const displayTimeoutMsg = () => {
@@ -253,7 +261,8 @@ const displayInstructions = instruction => {
 };
 
 const removeQuestion = () => {
-    $('.panel__game-feature__question', '.panel__game-feature__answer').remove();
+    $('.panel__game-feature__answer').remove();
+    $('.panel__game-feature__question').remove();
 };
 
 const removeInstructions = () => {
