@@ -8,8 +8,8 @@ let correctCount = 0;
 let correctAnswer = '';
 let timer = 0;
 let timerHandle;
-const timePerQuestion = 30;
-const questionCount = 2;
+const timePerQuestion = 13;
+const questionCount = 10;
 
 let init = () => {
     const startInstructions = 'Click anywhere to start the game';
@@ -23,6 +23,7 @@ let init = () => {
 };
 
 const startGame = () => {
+    correctCount = 0;
     questionIndex = 0;
     displayLoadAnimation();
     getTriviaQuestions();
@@ -115,8 +116,8 @@ const clearQuestions = () => {
 
 const showResults = () => {
     let questionCount = questionSet.length;
-    let score = correctCount / questionCount;
-    $('.panel__game-feature').text(`These are the results: ${score}`);
+    let score = (correctCount / questionCount) * 100;
+    $('.panel__game-feature').text(`Your total score is: ${score}%`);
 };
 
 const clearHandlers = () => {
@@ -176,7 +177,7 @@ const getTriviaQuestions = () => {
     const DIFFICULTY = 'easy';
     const URL = `https://opentdb.com/api.php?amount=${questionCount}&category=11&difficulty=${DIFFICULTY}&type=multiple`;
     $.ajax({
-        type: 'GET',
+        method: 'GET',
         url: URL,
         cache: false
     }).done((data) => {
@@ -201,6 +202,7 @@ const setNextRoundListener = () => {
             } else {
                 // no questions left; display results
                 showResults();
+                removeNextRoundListener();
                 setNextRoundListener();
                 questionIndex++;
             }
